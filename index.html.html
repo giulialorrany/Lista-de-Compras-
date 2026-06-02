@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Compras Inteligente</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .category-header { transition: all 0.2s ease; }
+        .category-header:hover { transform: translateX(5px); }
+        .item-card { transition: all 0.2s ease; }
+        .item-card:hover { transform: translateX(3px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .delete-btn:hover, .edit-btn:hover { transform: scale(1.1); }
+        
+        .custom-checkbox {
+            appearance: none; -webkit-appearance: none;
+            width: 20px; height: 20px;
+            border: 2px solid #818cf8;
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+        }
+        .custom-checkbox:checked {
+            background-color: #6366f1;
+            border-color: #6366f1;
+        }
+        .custom-checkbox:checked::after {
+            content: '\f00c';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            color: white;
+            font-size: 12px;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .checked-item {
+            text-decoration: line-through;
+            color: #9ca3af !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-3xl">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-indigo-700 mb-2">Lista de Compras</h1>
+            <p class="text-gray-600">Organize suas compras de forma inteligente</p>
+        </header>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                <div class="flex-1">
+                    <label for="itemName" class="block text-sm font-medium text-gray-700 mb-1">Nome do Item</label>
+                    <input type="text" id="itemName" placeholder="Ex: Arroz, Sabão em pó" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div class="flex-1">
+                    <label for="itemCategory" class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                    <select id="itemCategory" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="comidas-secos">Comidas - Secos</option>
+                        <option value="comidas-molhados">Comidas - Molhados</option>
+                        <option value="limpeza">Limpeza</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button id="addItemBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md transition flex items-center gap-2">
+                        <i class="fas fa-plus"></i> Adicionar
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-gray-800">Itens da Lista</h2>
+                <div class="flex gap-4">
+                    <button id="exportListBtn" class="text-green-600 hover:text-green-800 text-sm font-medium flex items-center gap-1">
+                        <i class="fas fa-file-export"></i> Exportar
+                    </button>
+                    <button id="clearCompletedBtn" class="text-gray-500 hover:text-gray-700 text-sm font-medium flex items-center gap-1">
+                        <i class="fas fa-check-circle"></i> Limpar Concluídos
+                    </button>
+                    <button id="clearAllBtn" class="text-red-500 hover:text-red-700 text-sm font-medium flex items-center gap-1">
+                        <i class="fas fa-trash-alt"></i> Limpar Tudo
+                    </button>
+                </div>
+            </div>
+
+            <div id="shoppingList" class="space-y-6">
+                <!-- Categorias mantidas iguais -->
+                <div class="category-section">
+                    <div class="category-header flex items-center justify-between bg-indigo-50 px-4 py-3 rounded-md cursor-pointer" onclick="toggleCategory('comidas-secos')">
+                        <h3 class="font-medium text-indigo-700 flex items-center gap-2"><i class="fas fa-bread-slice"></i> Comidas - Secos</h3>
+                        <i class="fas fa-chevron-down text-indigo-500 transition-transform duration-200" id="comidas-secos-arrow"></i>
+                    </div>
+                    <div id="comidas-secos-items" class="mt-2 space-y-2 pl-2"></div>
+                </div>
+
+                <div class="category-section">
+                    <div class="category-header flex items-center justify-between bg-blue-50 px-4 py-3 rounded-md cursor-pointer" onclick="toggleCategory('comidas-molhados')">
+                        <h3 class="font-medium text-blue-700 flex items-center gap-2"><i class="fas fa-wine-bottle"></i> Comidas - Molhados</h3>
+                        <i class="fas fa-chevron-down text-blue-500 transition-transform duration-200" id="comidas-molhados-arrow"></i>
+                    </div>
+                    <div id="comidas-molhados-items" class="mt-2 space-y-2 pl-2 hidden"></div>
+                </div>
+
+                <div class="category-section">
+                    <div class="category-header flex items-center justify-between bg-green-50 px-4 py-3 rounded-md cursor-pointer" onclick="toggleCategory('limpeza')">
+                        <h3 class="font-medium text-green-700 flex items-center gap-2"><i class="fas fa-broom"></i> Limpeza</h3>
+                        <i class="fas fa-chevron-down text-green-500 transition-transform duration-200" id="limpeza-arrow"></i>
+                    </div>
+                    <div id="limpeza-items" class="mt-2 space-y-2 pl-2 hidden"></div>
+                </div>
+            </div>
+
+            <div id="emptyState" class="text-center py-8 hidden">
+                <i class="fas fa-shopping-basket text-4xl text-gray-300 mb-4"></i>
+                <p class="text-gray-500">Sua lista está vazia. Adicione itens para começar!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de edição (mantido igual) -->
+    <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md fade-in">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-gray-800">Editar Item</h3>
+                <button id="closeModalBtn" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label for="editItemName" class="block text-sm font-medium text-gray-700 mb-1">Nome do Item</label>
+                    <input type="text" id="editItemName" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                    <label for="editItemCategory" class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                    <select id="editItemCategory" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="comidas-secos">Comidas - Secos</option>
+                        <option value="comidas-molhados">Comidas - Molhados</option>
+                        <option value="limpeza">Limpeza</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button id="cancelEditBtn" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancelar</button>
+                    <button id="saveEditBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Salvar Alterações</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let shoppingItems = JSON.parse(localStorage.getItem('shoppingItems')) || [];
+        let currentlyEditingId = null;
+
+        const itemNameInput = document.getElementById('itemName');
+        const itemCategorySelect = document.getElementById('itemCategory');
+        const addItemBtn = document.getElementById('addItemBtn');
+        const clearAllBtn = document.getElementById('clearAllBtn');
+        const clearCompletedBtn = document.getElementById('clearCompletedBtn');
+        const exportListBtn = document.getElementById('exportListBtn');
+        const editModal = document.getElementById('editModal');
+        const editItemName = document.getElementById('editItemName');
+        const editItemCategory = document.getElementById('editItemCategory');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const cancelEditBtn = document.getElementById('cancelEditBtn');
+        const saveEditBtn = document.getElementById('saveEditBtn');
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderShoppingList();
+            updateEmptyState();
+        });
+
+        // ==================== EXPORTAÇÃO ALTERADA ====================
+        exportListBtn.addEventListener('click', () => {
+            if (shoppingItems.length === 0) {
+                alert('A lista está vazia. Não há nada para exportar.');
+                return;
+            }
+
+            const date = new Date().toLocaleDateString('pt-BR');
+            let text = `LISTA DE COMPRAS\n${date}\n\n`;
+
+            const categorias = {
+                'comidas-secos': 'COMIDAS - SECOS',
+                'comidas-molhados': 'COMIDAS - MOLHADOS',
+                'limpeza': 'LIMPEZA'
+            };
+
+            Object.keys(categorias).forEach(cat => {
+                const itens = shoppingItems.filter(item => item.category === cat);
+                if (itens.length > 0) {
+                    text += `${categorias[cat]}\n`;
+                    itens.forEach(item => {
+                        const status = item.checked ? '✅ ' : '⬜ ';
+                        text += `${status}${item.name}\n`;
+                    });
+                    text += '\n';
+                }
+            });
+
+            const dataUri = 'data:text/plain;charset=utf-8,' + encodeURIComponent(text);
+            const exportFileDefaultName = `lista-de-compras-${new Date().toISOString().slice(0,10)}.txt`;
+
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+        });
+        // ============================================================
+
+        addItemBtn.addEventListener('click', () => {
+            const name = itemNameInput.value.trim();
+            const category = itemCategorySelect.value;
+            if (name) {
+                shoppingItems.push({
+                    id: Date.now(),
+                    name,
+                    category,
+                    checked: false,
+                    createdAt: new Date().toISOString()
+                });
+                saveToLocalStorage();
+                renderShoppingList();
+                updateEmptyState();
+                itemNameInput.value = '';
+                itemNameInput.focus();
+                showCategory(category);
+            }
+        });
+
+        clearAllBtn.addEventListener('click', () => {
+            if (shoppingItems.length > 0 && confirm('Tem certeza que deseja limpar toda a lista?')) {
+                shoppingItems = [];
+                saveToLocalStorage();
+                renderShoppingList();
+                updateEmptyState();
+            }
+        });
+
+        clearCompletedBtn.addEventListener('click', () => {
+            if (shoppingItems.some(i => i.checked) && confirm('Remover itens marcados como comprados?')) {
+                shoppingItems = shoppingItems.filter(item => !item.checked);
+                saveToLocalStorage();
+                renderShoppingList();
+                updateEmptyState();
+            }
+        });
+
+        // Funções restantes (mantidas iguais, apenas otimizadas visualmente)
+        function renderShoppingList() {
+            document.querySelectorAll('[id$="-items"]').forEach(el => el.innerHTML = '');
+            
+            const byCategory = { 'comidas-secos': [], 'comidas-molhados': [], 'limpeza': [] };
+            shoppingItems.forEach(item => byCategory[item.category].push(item));
+
+            Object.keys(byCategory).forEach(category => {
+                const container = document.getElementById(`${category}-items`);
+                byCategory[category].forEach(item => {
+                    container.appendChild(createItemElement(item));
+                });
+            });
+        }
+
+        function createItemElement(item) {
+            const div = document.createElement('div');
+            div.className = 'item-card bg-white p-3 rounded-md border border-gray-100 flex justify-between items-center fade-in';
+            div.dataset.id = item.id;
+
+            const color = item.category === 'comidas-secos' ? 'indigo' : item.category === 'comidas-molhados' ? 'blue' : 'green';
+
+            div.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <input type="checkbox" ${item.checked ? 'checked' : ''} class="custom-checkbox" id="cb-${item.id}">
+                    <label for="cb-${item.id}" class="cursor-pointer">
+                        <span class="text-gray-800 ${item.checked ? 'checked-item' : ''}">${item.name}</span>
+                    </label>
+                </div>
+                <div class="flex gap-2">
+                    <button class="edit-btn text-gray-500 hover:text-${color}-600" data-id="${item.id}"><i class="fas fa-edit"></i></button>
+                    <button class="delete-btn text-gray-500 hover:text-red-600" data-id="${item.id}"><i class="fas fa-trash-alt"></i></button>
+                </div>
+            `;
+
+            // Events
+            div.querySelector('.delete-btn').onclick = () => { deleteItem(item.id); };
+            div.querySelector('.edit-btn').onclick = () => { openEditModal(item); };
+            div.querySelector(`#cb-${item.id}`).onchange = (e) => {
+                const it = shoppingItems.find(i => i.id === item.id);
+                if (it) it.checked = e.target.checked;
+                saveToLocalStorage();
+                renderShoppingList();
+            };
+
+            return div;
+        }
+
+        function deleteItem(id) {
+            shoppingItems = shoppingItems.filter(i => i.id !== id);
+            saveToLocalStorage();
+            renderShoppingList();
+            updateEmptyState();
+        }
+
+        function openEditModal(item) {
+            currentlyEditingId = item.id;
+            editItemName.value = item.name;
+            editItemCategory.value = item.category;
+            editModal.classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            editModal.classList.add('hidden');
+            currentlyEditingId = null;
+        }
+
+        saveEditBtn.onclick = () => {
+            if (!currentlyEditingId) return;
+            const name = editItemName.value.trim();
+            if (name) {
+                const item = shoppingItems.find(i => i.id === currentlyEditingId);
+                if (item) {
+                    item.name = name;
+                    item.category = editItemCategory.value;
+                    saveToLocalStorage();
+                    renderShoppingList();
+                    closeEditModal();
+                }
+            }
+        };
+
+        closeModalBtn.onclick = cancelEditBtn.onclick = closeEditModal;
+
+        function toggleCategory(cat) {
+            const cont = document.getElementById(`${cat}-items`);
+            const arrow = document.getElementById(`${cat}-arrow`);
+            cont.classList.toggle('hidden');
+            arrow.classList.toggle('fa-chevron-down');
+            arrow.classList.toggle('fa-chevron-up');
+        }
+
+        function showCategory(cat) {
+            const cont = document.getElementById(`${cat}-items`);
+            const arrow = document.getElementById(`${cat}-arrow`);
+            cont.classList.remove('hidden');
+            arrow.classList.remove('fa-chevron-down');
+            arrow.classList.add('fa-chevron-up');
+        }
+
+        function updateEmptyState() {
+            const empty = document.getElementById('emptyState');
+            const list = document.getElementById('shoppingList');
+            if (shoppingItems.length === 0) {
+                empty.classList.remove('hidden');
+                list.classList.add('hidden');
+            } else {
+                empty.classList.add('hidden');
+                list.classList.remove('hidden');
+            }
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('shoppingItems', JSON.stringify(shoppingItems));
+        }
+
+        itemNameInput.addEventListener('keypress', e => {
+            if (e.key === 'Enter') addItemBtn.click();
+        });
+    </script>
+</body>
+</html>
